@@ -372,38 +372,86 @@ const len = arr.length;
 console.log(arr.length);
 let data = [
     { id: 0, text: 'Complaint Category, Service Main Classification', nodes: [] },
-    { id: 1, text: 'Service Main Classification, Sub Classification', nodes: [] },
     { id: 2, text: 'Complaint Division, decision made in complaint solution', nodes: [] },
     { id: 3, text: 'Service Ecalation Complaint, decision made in complaint solution', nodes: [] },
-    { id: 4, text: 'Complaint Division, Decision Made', nodes: [] },
-    { id: 5, text: 'Main Classification, Complaint Technical Classification', nodes: [] }
+    { id: 4, text: 'Complaint Division, Decision Made', nodes: [] }
+    //{ id: 5, text: 'Main Classification, Complaint Technical Classification', nodes: [] }
 ];
 
 for (let i = 0; i < len; i += 5/*each row */) {
     console.log(arr[i].trim());
     //get row data
-    let parentId = Number(arr[i].trim());
-    let mainClassId = Number(arr[i + 1].trim());
-    let mainClassTxt = arr[i + 2].trim();
-    let subClassId = Number(arr[i + 3].trim());
-    let subClassTxt = arr[i + 4].trim();
+    let parentTypeId = Number(arr[i].trim());
+    let childId = Number(arr[i + 1].trim());
+    let childTxt = arr[i + 2].trim();
+    let subChildId = Number(arr[i + 3].trim());
+    let subChildTxt = arr[i + 4].trim();
+    let subOfSubChildId = null;
+    let subOfSubChildTxt = null;
+    //in case of service main class which is dependent for complaint category
+    // add sub of sub
+    if (parentTypeId == 1) {
+        parentTypeId = 0; // based on obj data
+        subOfSubChildId = subChildId;
+        subOfSubChildTxt = subChildTxt;
+        subChildId = childId;
+        subChildTxt = null;
+        childId = null;
+        childTxt = null;
+    }
+    let parentTypeNode = data.find(el => el.id === parentTypeId);
+    prepareParentNestedNodes(parentTypeNode, childId, childTxt, subChildId, subChildTxt, subOfSubChildId, subOfSubChildTxt);
+};
 
-    let parentNode = data.find(el => el.id === parentId);
-    if (parentNode) {
-        let mainClassNode = parentNode.nodes.find(el => el.id === mainClassId);
-        if (mainClassNode) {
-            let subClassNode = mainClassNode.nodes.find(el => el.id === subClassId);
-            if (!subClassNode)
-                mainClassNode.nodes.push({ id: subClassId, text: subClassTxt });
+function prepareParentNestedNodes(parentTypeNode, childId, childTxt, subChildId,
+    subChildTxt, subOfSubChildId = null, subOfSubChildTxt = null) {
+    if (parentTypeNode) {
+        let childNode;
+
+        if (childId == null && subChildId && subOfSubChildId) // so u have to search for corresponding child
+            childNode = parentTypeNode.nodes.find(el => el.nodes?.some(x => x.id === subChildId));
+        else
+            childNode = parentTypeNode.nodes.find(el => el.id === childId);
+
+        if (childNode) {
+            let subChildNode = childNode.nodes?.find(el => el.id === subChildId);
+            if (subChildNode) {
+                let subOfSubChildNode = subChildNode.nodes?.find(el => el.id === subOfSubChildId);
+                if (!subOfSubChildNode && subOfSubChildId)
+                    subChildNode.nodes?.push({ id: subOfSubChildId, text: subOfSubChildTxt });
+            }
+            else {
+                let subChildNode, subOfSubChildNode;
+                if (subChildId) {
+                    subChildNode = {
+                        id: subChildId, text: subChildTxt,nodes:[]
+                    };
+                    if (subOfSubChildId) {
+                        subOfSubChildNode = { id: subOfSubChildId, text: subOfSubChildTxt }
+                        subChildNode.nodes.push(subOfSubChildNode);
+                    }
+                    childNode.nodes.push(subChildNode);
+                }
+            }
         }
         else {
-            parentNode.nodes.push({
-                id: mainClassId, text: mainClassTxt,
-                nodes: [
-                    { id: subClassId, text: subClassTxt }
-                ]
-            })
+            let childNode, subChildNode, subOfSubChildNode;
+            if (childId) {
+                childNode = {
+                    id: childId, text: childTxt,nodes:[]
+                };
+                if (subChildId) {
+                    subChildNode = {
+                        id: subChildId, text: subChildTxt,nodes:[]
+                    };
+                    if (subOfSubChildId) {
+                        subOfSubChildNode = { id: subOfSubChildId, text: subOfSubChildTxt }
+                        subChildNode.nodes.push(subOfSubChildNode);
+                    }
+                    childNode.nodes.push(subChildNode);
+                }
+                parentTypeNode.nodes.push(childNode);
+            }
         }
     }
-
-};
+}
